@@ -1,0 +1,94 @@
+<div class="flex h-screen">
+  <!-- Sidebar - Room List -->
+  <div class="w-1/3 bg-white border-r border-gray-300 flex flex-col">
+    <!-- Header -->
+    <div class="p-4 border-b border-gray-200 bg-gray-50">
+      <div class="flex items-center justify-between">
+        <%= link_to root_path, class: "text-blue-600 hover:text-blue-800" do %>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+          </svg>
+        <% end %>
+        <h2 class="text-lg font-semibold text-gray-800">Messages</h2>
+        <div></div> <!-- Spacer for flexbox alignment -->
+      </div>
+    </div>
+    
+    <!-- Room Members -->
+    <div class="p-4 bg-gray-50 border-b border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-700 mb-2">Members (<%= @room_memberships.count %>)</h3>
+      <div class="flex flex-wrap gap-2">
+        <% @room_memberships.each do |membership| %>
+          <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+            <%= membership.user.display_name %>
+            <% if membership.user == @room.user %>
+              <span class="ml-1 text-blue-600">👑</span>
+            <% end %>
+          </span>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Back to all rooms hint -->
+    <div class="p-4 text-center">
+      <%= link_to "← All Chats", root_path, class: "text-blue-600 hover:text-blue-800 text-sm" %>
+    </div>
+  </div>
+
+  <!-- Chat Area -->
+  <div class="flex-1 bg-gray-50 flex flex-col">
+    <!-- Chat Header -->
+    <div class="bg-white border-b border-gray-200 p-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-xl font-semibold text-gray-800"><%= @room.name %></h1>
+          <% if @room.description.present? %>
+            <p class="text-gray-600 text-sm"><%= @room.description %></p>
+          <% end %>
+        </div>
+        <div class="text-sm text-gray-500">
+          <%= pluralize(@room_memberships.count, 'member') %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Messages Area -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-3" id="messages">
+      <%= turbo_stream_from @room %>
+      <% @messages.each do |message| %>
+        <%= render 'messages/message', message: message, current_user: current_user %>
+      <% end %>
+    </div>
+
+    <!-- Message Input -->
+    <div class="bg-white border-t border-gray-200 p-4">
+      <%= form_with model: [@room, @message], local: false, class: "flex space-x-2" do |form| %>
+        <%= form.text_area :content, 
+            placeholder: "Type a message...", 
+            rows: 1,
+            class: "flex-1 px-4 py-3 border border-gray-300 rounded-full resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+            style: "min-height: 44px; max-height: 120px;",
+            onkeydown: "if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.requestSubmit();}",
+            oninput: "this.style.height='44px';this.style.height=(this.scrollHeight)+'px'" %>
+        <%= form.submit "Send", 
+            class: "px-6 py-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-150" %>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Auto-scroll to bottom of messages
+  function scrollToBottom() {
+    const messagesContainer = document.getElementById('messages');
+    if (messagesContainer) {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+  }
+  
+  // Scroll to bottom on page load
+  document.addEventListener('DOMContentLoaded', scrollToBottom);
+  
+  // Scroll to bottom when new messages arrive via Turbo Stream
+  document.addEventListener('turbo:stream-render', scrollToBottom);
+</script>
